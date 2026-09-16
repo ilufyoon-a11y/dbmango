@@ -1,13 +1,13 @@
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from telegram import Update, ReplyKeyboardRemove
 import os
 import json
 import datetime
 import re
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 from flask import Flask
 from threading import Thread
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from telegram import Update, ReplyKeyboardRemove
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
 # --- 1. DESPERTADOR PARA RAILWAY (FLASK) ---
 app_web = Flask('')
@@ -28,17 +28,18 @@ def trigger_alertas():
         proximos = []
 
         for reg in registros:
+            # Mapeamos con los nombres exactos de tus encabezados (Columnas K a S)
             fecha_str = str(reg.get('FECHA DE VENC', '')).strip()
             if not fecha_str:
                 continue
             try:
-                # Convertimos la fecha del sheet a tipo 'date' para poder restar con 'hoy'
+                # Soporte para formatos de fecha comunes (DD/MM/YYYY)
                 fecha_v = datetime.datetime.strptime(fecha_str, "%d/%m/%Y").date()
                 dias_restantes = (fecha_v - hoy).days
                 
                 # Alertas para hoy (0) o mañana (1)
                 if 0 <= dias_restantes <= 1:
-                    plataforma = reg.get('PLATAFORMA', 'N/A')
+                    plataforma = reg.get('PLATAFORMAS', 'N/A')
                     correo = reg.get('CORREO', 'N/A')
                     proximos.append(
                         f"• *{plataforma}* (`{correo}`) vence en *{dias_restantes}* día(s). ⏰"
@@ -54,7 +55,6 @@ def trigger_alertas():
             if not TOKEN or not CHAT_ID:
                 return "🚨 Error: Faltan variables de entorno TOKEN_TELEGRAM o CHAT_ID en Railway", 500
 
-            # Solución al error de Asyncio en Flask (ejecución en hilo seguro)
             async def enviar():
                 from telegram import Bot
                 bot = Bot(token=TOKEN)
@@ -97,7 +97,7 @@ def conectar_google():
             info['private_key'] = info['private_key'].replace('\\n', '\n')
         creds = ServiceAccountCredentials.from_json_keyfile_dict(info, scope)
         client = gspread.authorize(creds)
-        sheet = client.open("mango").worksheet("datos")
+        sheet = client.open("mango").worksheet("Hoja 1") # Ajusta al nombre de tu pestaña si es necesario
         print("✅ CONECTADO A GOOGLE SHEETS 💜")
     except Exception as e:
         print(f"🚨 ERROR DE CONEXIÓN: {e}")
@@ -131,7 +131,7 @@ async def registro_rapido(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "IP: 192.168.1.1\n"
             "Priv: No\n"
             "Plataforma: Netflix\n"
-            "Estado: Activo\n"
+            "Estado: Vigente\n"
             "BIN: 414720\n"
             "Tarjeta: 1234\n"
             "Vencimiento: 28/07/2026`"
@@ -139,7 +139,6 @@ async def registro_rapido(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ejemplo, parse_mode='Markdown')
         return
 
-    # Extraemos cada campo de forma inteligente usando expresiones regulares
     def buscar_campo(patron, texto_fuente):
         match = re.search(patron, texto_fuente, re.IGNORECASE)
         return match.group(1).strip() if match else ""
@@ -162,22 +161,22 @@ async def registro_rapido(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        col_b = sheet.col_values(2)
-        siguiente_fila = 4
-        for i, valor in enumerate(col_b):
-            if i >= 3 and not str(valor).strip():
+        col_k = sheet.col_values(11) # Columna K (Correo)
+        siguiente_fila = 41
+        for i, valor in enumerate(col_k):
+            if i >= 40 and not str(valor).strip(): # A partir de la fila 41 (índice 40)
                 siguiente_fila = i + 1
                 break
         else:
-            siguiente_fila = max(len(col_b) + 1, 4)
+            siguiente_fila = max(len(col_k) + 1, 41)
 
-        if siguiente_fila < 4:
-            siguiente_fila = 4
+        if siguiente_fila < 41:
+            siguiente_fila = 41
 
-        # Array de datos en el orden exacto de tus columnas (B a J)
+        # Array de datos en el orden exacto de tus columnas (K a S)
         datos = [correo, clave, ip, priv, plataforma, estado, bin_num, tarjeta, vencimiento]
 
-        sheet.update(range_name=f"B{siguiente_fila}:J{siguiente_fila}", values=[datos])
+        sheet.update(range_name=f"K{siguiente_fila}:S{siguiente_fila}", values=[datos])
 
         await update.message.reply_text(
             f"⚡ *¡REGISTRO RÁPIDO EXITOSO!*\n"
@@ -190,9 +189,9 @@ async def registro_rapido(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"❌ Error al guardar en Sheets: `{e}`", parse_mode='Markdown')
 
-# --- REGISTRO PASO A PASO (CONVERSATION HANDLER ORIGINAL) ---
+# --- REGISTRO PASO A PASO ---
 async def nuevo_registro(u, c):
-    await u.message.reply_text("⭒    ۪   𝖢𝗈𝗋𝗋𝖾𝗈   ֹ    ۪   💌", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖢𝗈𝗋𝗋𝖾𝗈    ֹ     ۪    💌", parse_mode='Markdown')
     return CORREO
 
 async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -205,43 +204,43 @@ async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def p_clave(u, c):
     c.user_data['correo'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖯𝖺𝗌𝗌𝗐𝗈𝗋𝖽   ֹ    ۪   🗝️", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖯𝖺𝗌𝗌𝗐𝗈𝗋𝖽    ֹ     ۪    🗝️", parse_mode='Markdown')
     return CLAVE
 
 async def p_ip(u, c):
     c.user_data['clave'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖨𝖯   ֹ    ۪   🗺️", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖨𝖯    ֹ     ۪    🗺️", parse_mode='Markdown')
     return IP
 
 async def p_priv(u, c):
     c.user_data['ip'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖯𝗋𝗂𝗏   ֹ    ۪   🗃️", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖯𝗋𝗂𝗏    ֹ     ۪    🗃️", parse_mode='Markdown')
     return PRIV
 
 async def p_plataforma(u, c):
     c.user_data['priv'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖯𝗅𝖺𝗍𝖺𝖿𝗈𝗋𝗆𝖺   ֹ    ۪   💻", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖯𝗅𝖺𝗍𝖺𝖿𝗈𝗋𝗆𝖺    ֹ     ۪    💻", parse_mode='Markdown')
     return PLATAFORMA
 
 async def p_pestado(u, c):
     c.user_data['plataforma'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖤𝗌𝗍𝖺𝖽𝗈   ֹ    ۪   🪁", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖤𝗌𝗍𝖺𝖽𝗈    ֹ     ۪    🪁", parse_mode='Markdown')
     return ESTADO
 
 async def p_bin(u, c):
     c.user_data['estado'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖡𝖨𝖭   ֹ    ۪   🔢", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖡𝖨𝖭    ֹ     ۪    🔢", parse_mode='Markdown')
     return BIN
 
 async def p_tarjeta(u, c):
     c.user_data['bin'] = u.message.text
-    await u.message.reply_text("⭒    ۪   𝖳𝖺𝗋𝗃𝖾𝗍𝖺   ֹ    ۪   💳", parse_mode='Markdown')
+    await u.message.reply_text("⭒    ۪    𝖳𝖺𝗋𝗃𝖾𝗍𝖺    ֹ     ۪    💳", parse_mode='Markdown')
     return TARJETA
 
 async def p_fecha_ven(u, c):
     c.user_data['tarjeta'] = u.message.text
     await u.message.reply_text(
-        "⭒    ۪   𝖵𝖾𝗇𝖼𝗂𝗆𝗂𝖾𝗇𝗍𝗈   ֹ    ۪   ⏰",
+        "⭒    ۪    𝖵𝖾𝗇𝖼𝗂𝗆𝗂𝖾𝗇𝗍𝗈    ֹ     ۪    ⏰",
         parse_mode='Markdown'
     )
     return FECHA_VEN
@@ -252,18 +251,17 @@ async def finalizar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conectar_google()
 
     try:
-        col_b = sheet.col_values(2)
-
-        siguiente_fila = 4
-        for i, valor in enumerate(col_b):
-            if i >= 3 and not str(valor).strip():
+        col_k = sheet.col_values(11) # Columna K (Correo)
+        siguiente_fila = 41
+        for i, valor in enumerate(col_k):
+            if i >= 40 and not str(valor).strip():
                 siguiente_fila = i + 1
                 break
         else:
-            siguiente_fila = max(len(col_b) + 1, 4)
+            siguiente_fila = max(len(col_k) + 1, 41)
 
-        if siguiente_fila < 4:
-            siguiente_fila = 4
+        if siguiente_fila < 41:
+            siguiente_fila = 41
 
         datos = [
             context.user_data.get('correo', ''),
@@ -277,7 +275,7 @@ async def finalizar(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.message.text
         ]
 
-        sheet.update(range_name=f"B{siguiente_fila}:J{siguiente_fila}", values=[datos])
+        sheet.update(range_name=f"K{siguiente_fila}:S{siguiente_fila}", values=[datos])
         context.user_data.clear()
 
         await update.message.reply_text(
@@ -318,8 +316,8 @@ if __name__ == '__main__':
         )
 
         app.add_handler(CommandHandler("start", start_command))
-        app.add_handler(CommandHandler("rapido", registro_rapido)) # Comando rápido añadido
+        app.add_handler(CommandHandler("rapido", registro_rapido))
         app.add_handler(conv_handler)
 
-        print("🥭 Sistema MANGO en línea y buscando desde la fila 4...")
+        print("🥭 Sistema MANGO en línea y guardando desde la fila 41 en columnas K-S...")
         app.run_polling()
