@@ -97,7 +97,7 @@ def conectar_google():
             info['private_key'] = info['private_key'].replace('\\n', '\n')
         creds = ServiceAccountCredentials.from_json_keyfile_dict(info, scope)
         client = gspread.authorize(creds)
-        sheet = client.open("mango").worksheet("Hoja 1") # Ajusta al nombre de tu pestaña si es necesario
+        sheet = client.open("Huerto de Mango").worksheet("mango")
         print("✅ CONECTADO A GOOGLE SHEETS 💜")
     except Exception as e:
         print(f"🚨 ERROR DE CONEXIÓN: {e}")
