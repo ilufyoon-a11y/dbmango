@@ -2,7 +2,7 @@ import os
 import json
 from flask import Flask, request
 from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, ContextTypes
 from oauth2client.service_account import ServiceAccountCredentials
 import gspread
 
@@ -10,9 +10,9 @@ app = Flask(__name__)
 
 # Configuración inicial
 TOKEN = os.getenv("TOKEN_TELEGRAM", "8791305594:AAFg09Zo3XGtLTUPziRf0kUQJDYHnBHGZuE")
-bot = Bot(token=TOKEN)
 
-dispatcher = Dispatcher(bot, None, use_context=True)
+# Configurar la aplicación de Telegram moderna (v20+)
+application = Application.builder().token(TOKEN).concurrent_updates(False).build()
 
 # --- CONEXIÓN A GOOGLE SHEETS ---
 def conectar_google():
@@ -37,7 +37,7 @@ def conectar_google():
         return None
 
 # --- COMANDO /rapido ---
-def rapido_command(update: Update, context: CallbackContext):
+async def rapido_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = update.message.text
     
     try:
@@ -61,7 +61,7 @@ def rapido_command(update: Update, context: CallbackContext):
 
         sheet = conectar_google()
         if not sheet:
-            update.message.reply_text("❌ Error: No se pudo conectar a Google Sheets.")
+            await update.message.reply_text("❌ Error: No se pudo conectar a Google Sheets.")
             return
 
         fila_datos = [correo, clave, ip, priv, plataforma, estado, bin_val, tarjeta, vencimiento]
@@ -72,11 +72,12 @@ def rapido_command(update: Update, context: CallbackContext):
         
         sheet.update(f'K{siguiente_fila}:S{siguiente_fila}', [fila_datos])
 
-        update.message.reply_text(f"✅ ¡Guardado exitosamente en la fila {siguiente_fila}!")
+        await update.message.reply_text(f"✅ ¡Guardado exitosamente en la fila {siguiente_fila}!")
     except Exception as e:
-        update.message.reply_text(f"❌ Error al guardar en Sheets: {e}")
+        await update.message.reply_text(f"❌ Error al guardar en Sheets: {e}")
 
-dispatcher.add_handler(CommandHandler("rapido", rapido_command))
+# Registrar el comando
+application.add_handler(CommandHandler("rapido", rapido_command))
 
 # --- RUTAS DE FLASK ---
 @app.route('/')
@@ -85,17 +86,34 @@ def home():
 
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    dispatcher.process_update(update)
+    """Procesa los mensajes de Telegram de forma sincrónica para Flask"""
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    async def process():
+        await application.initialize()
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        await application.process_update(update)
+
+    loop.run_until_complete(process())
     return 'ok'
 
 @app.route('/set_webhook')
 def set_webhook():
-    url_render = request.host_url.strip('/')
-    webhook_url = f"{url_render}/{TOKEN}"
-    s = bot.set_webhook(url=webhook_url)
+    import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    async def set_w():
+        await application.initialize()
+        url_render = request.host_url.strip('/')
+        webhook_url = f"{url_render}/{TOKEN}"
+        return await application.bot.set_webhook(url=webhook_url)
+
+    s = loop.run_until_complete(set_w())
     if s:
-        return f"✅ Webhook configurado exitosamente en: {webhook_url}"
+        return f"✅ Webhook configurado exitosamente."
     else:
         return "❌ Error al configurar el webhook."
 
