@@ -1,5 +1,7 @@
 import os
+import threading
 
+from flask import Flask
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -11,13 +13,32 @@ from telegram.ext import (
 )
 
 
+# -------------------------
+# Servidor para Render
+# -------------------------
+
+web_app = Flask(__name__)
+
+
+@web_app.route("/")
+def home():
+    return "Bot funcionando correctamente."
+
+
+def iniciar_servidor():
+    port = int(os.environ.get("PORT", 10000))
+    web_app.run(host="0.0.0.0", port=port)
+
+
+# -------------------------
 # Estados del formulario
+# -------------------------
+
 CORREO, CONTRASENA, IP, PRIV, PLATAFORMA, ESTADO, BIN, TARJETA, VENCIMIENTO = range(9)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    # Creamos un registro vacío para este usuario
     context.user_data["registro"] = {}
 
     await update.message.reply_text(
@@ -137,6 +158,10 @@ async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+# -------------------------
+# Programa principal
+# -------------------------
+
 def main():
 
     token = os.getenv("TELEGRAM_TOKEN")
@@ -144,6 +169,12 @@ def main():
     if not token:
         print("ERROR: No se encontró TELEGRAM_TOKEN")
         return
+
+    # Iniciar servidor HTTP para Render
+    threading.Thread(
+        target=iniciar_servidor,
+        daemon=True
+    ).start()
 
     app = Application.builder().token(token).build()
 
