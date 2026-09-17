@@ -28,7 +28,7 @@ WORKSHEET_NAME = "Main"
 
 
 # =========================================================
-# SERVIDOR FLASK PARA RENDER
+# SERVIDOR PARA RENDER
 # =========================================================
 
 app = Flask(__name__)
@@ -49,14 +49,13 @@ def iniciar_servidor():
 
 
 # =========================================================
-# CONEXIÓN CON GOOGLE SHEETS
+# GOOGLE SHEETS
 # =========================================================
 
 def conectar_google_sheets():
 
     print("🔄 Intentando conectar con Google Sheets...")
 
-    # Obtener las credenciales desde Render
     credenciales_json = os.environ.get("GOOGLE_CREDS")
 
     if not credenciales_json:
@@ -66,23 +65,82 @@ def conectar_google_sheets():
 
     print("✅ GOOGLE_CREDS encontrada.")
 
-    # Convertir el JSON
+    # Convertir el contenido de GOOGLE_CREDS a JSON
     credenciales = json.loads(credenciales_json)
 
+    print(
+        "📧 Cuenta de servicio:",
+        credenciales.get("client_email")
+    )
+
+    print(
+        "🆔 ID de la hoja:",
+        SHEET_ID
+    )
+
     # Autenticación
-    cliente = gspread.service_account_from_dict(credenciales)
+    cliente = gspread.service_account_from_dict(
+        credenciales
+    )
 
     print("✅ Autenticación con Google realizada.")
 
-    # Abrir el archivo mediante su ID
-    archivo = cliente.open_by_key(SHEET_ID)
+    # -----------------------------------------------------
+    # Intentar abrir la hoja
+    # -----------------------------------------------------
 
-    print("✅ Google Sheet encontrado.")
+    try:
 
-    # Abrir la pestaña Main
-    hoja = archivo.worksheet(WORKSHEET_NAME)
+        print("🔎 Intentando abrir Google Sheet...")
 
-    print("✅ Pestaña 'Main' encontrada.")
+        archivo = cliente.open_by_key(SHEET_ID)
+
+        print("✅ Google Sheet encontrado.")
+
+    except Exception as error:
+
+        print("===================================")
+        print("❌ ERROR AL ABRIR GOOGLE SHEET")
+        print("TIPO:", type(error).__name__)
+        print("DETALLE:", repr(error))
+        print("----- TRACEBACK -----")
+
+        traceback.print_exc()
+
+        print("===================================")
+
+        raise
+
+    # -----------------------------------------------------
+    # Intentar abrir la pestaña Main
+    # -----------------------------------------------------
+
+    try:
+
+        print(
+            "🔎 Intentando abrir pestaña:",
+            WORKSHEET_NAME
+        )
+
+        hoja = archivo.worksheet(WORKSHEET_NAME)
+
+        print(
+            "✅ Pestaña 'Main' encontrada."
+        )
+
+    except Exception as error:
+
+        print("===================================")
+        print("❌ ERROR AL ABRIR LA PESTAÑA")
+        print("TIPO:", type(error).__name__)
+        print("DETALLE:", repr(error))
+        print("----- TRACEBACK -----")
+
+        traceback.print_exc()
+
+        print("===================================")
+
+        raise
 
     return hoja
 
@@ -105,10 +163,13 @@ def conectar_google_sheets():
 
 
 # =========================================================
-# /START
+# START
 # =========================================================
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     context.user_data["registro"] = {}
 
@@ -124,9 +185,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # CORREO
 # =========================================================
 
-async def recibir_correo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_correo(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["CORREO"] = update.message.text
+    context.user_data["registro"]["CORREO"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "🔐 Escribe la CONTRASEÑA de prueba:"
@@ -139,9 +205,14 @@ async def recibir_correo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # CONTRASEÑA
 # =========================================================
 
-async def recibir_contrasena(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_contrasena(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["CONTRASEÑA"] = update.message.text
+    context.user_data["registro"]["CONTRASEÑA"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "🌐 Escribe la IP de prueba:"
@@ -154,9 +225,14 @@ async def recibir_contrasena(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # IP
 # =========================================================
 
-async def recibir_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_ip(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["IP"] = update.message.text
+    context.user_data["registro"]["IP"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "🔑 Escribe el nivel PRIV de prueba:"
@@ -169,9 +245,14 @@ async def recibir_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # PRIV
 # =========================================================
 
-async def recibir_priv(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_priv(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["PRIV"] = update.message.text
+    context.user_data["registro"]["PRIV"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "📱 Escribe la PLATAFORMA de prueba:"
@@ -184,9 +265,14 @@ async def recibir_priv(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # PLATAFORMA
 # =========================================================
 
-async def recibir_plataforma(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_plataforma(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["PLATAFORMAS"] = update.message.text
+    context.user_data["registro"]["PLATAFORMAS"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "📌 Escribe el ESTADO de prueba:"
@@ -199,9 +285,14 @@ async def recibir_plataforma(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # ESTADO
 # =========================================================
 
-async def recibir_estado(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_estado(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["ESTADO"] = update.message.text
+    context.user_data["registro"]["ESTADO"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "🔢 Escribe el BIN de prueba:"
@@ -214,9 +305,14 @@ async def recibir_estado(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # BIN
 # =========================================================
 
-async def recibir_bin(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_bin(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["BIN"] = update.message.text
+    context.user_data["registro"]["BIN"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "💳 Escribe el número de TARJETA ficticio:"
@@ -229,9 +325,14 @@ async def recibir_bin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # TARJETA
 # =========================================================
 
-async def recibir_tarjeta(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_tarjeta(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["TARJETA"] = update.message.text
+    context.user_data["registro"]["TARJETA"] = (
+        update.message.text
+    )
 
     await update.message.reply_text(
         "📅 Escribe la FECHA DE VENCIMIENTO ficticia:"
@@ -241,7 +342,7 @@ async def recibir_tarjeta(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================================================
-# VENCIMIENTO + GUARDAR EN GOOGLE SHEETS
+# VENCIMIENTO
 # =========================================================
 
 async def recibir_vencimiento(
@@ -249,9 +350,9 @@ async def recibir_vencimiento(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
-    context.user_data["registro"]["FECHA DE VENCIMIENTO"] = (
-        update.message.text
-    )
+    context.user_data["registro"][
+        "FECHA DE VENCIMIENTO"
+    ] = update.message.text
 
     registro = context.user_data["registro"]
 
@@ -264,7 +365,7 @@ async def recibir_vencimiento(
         # Conectar con Google Sheets
         hoja = conectar_google_sheets()
 
-        # Orden exacto de las columnas de la hoja
+        # Orden de las columnas
         fila = [
             registro["CORREO"],
             registro["CONTRASEÑA"],
@@ -279,37 +380,35 @@ async def recibir_vencimiento(
 
         print("📊 Enviando fila a Google Sheets...")
 
-        # Guardar la fila
+        # Guardar información
         hoja.append_row(fila)
 
         print("✅ FILA GUARDADA CORRECTAMENTE.")
         print("===================================")
 
         await update.message.reply_text(
-            "✅ ¡Registro guardado correctamente en Google Sheets!"
+            "✅ ¡Registro guardado correctamente "
+            "en Google Sheets!"
         )
 
-    except Exception as e:
+    except Exception as error:
 
         print("===================================")
         print("❌ ERROR GOOGLE SHEETS")
-        print("TIPO:", type(e).__name__)
-        print("DETALLE:", repr(e))
+        print("TIPO:", type(error).__name__)
+        print("DETALLE:", repr(error))
         print("----- TRACEBACK COMPLETO -----")
 
-        # IMPORTANTE:
-        # Esto nos mostrará exactamente dónde ocurre el error
         traceback.print_exc()
 
         print("===================================")
 
         await update.message.reply_text(
-            "⚠️ Ocurrió un error al guardar los datos "
-            "en Google Sheets.\n\n"
-            f"Tipo de error: {type(e).__name__}"
+            "⚠️ Ocurrió un error al guardar "
+            "los datos en Google Sheets.\n\n"
+            f"Tipo de error: {type(error).__name__}"
         )
 
-    # Limpiar los datos de la conversación
     context.user_data.clear()
 
     return ConversationHandler.END
@@ -334,12 +433,12 @@ async def cancelar(
 
 
 # =========================================================
-# FUNCIÓN PRINCIPAL
+# MAIN
 # =========================================================
 
 def main():
 
-    # Iniciar Flask en segundo plano
+    # Iniciar servidor Flask
     threading.Thread(
         target=iniciar_servidor,
         daemon=True
@@ -348,9 +447,14 @@ def main():
     print("🤖 Bot iniciado...")
 
     # Crear aplicación de Telegram
-    application = Application.builder().token(TOKEN).build()
+    application = (
+        Application
+        .builder()
+        .token(TOKEN)
+        .build()
+    )
 
-    # Conversación
+    # Crear conversación
     conversacion = ConversationHandler(
 
         entry_points=[
@@ -424,7 +528,10 @@ def main():
         },
 
         fallbacks=[
-            CommandHandler("cancelar", cancelar)
+            CommandHandler(
+                "cancelar",
+                cancelar
+            )
         ]
     )
 
@@ -435,7 +542,7 @@ def main():
 
 
 # =========================================================
-# EJECUTAR
+# EJECUCIÓN
 # =========================================================
 
 if __name__ == "__main__":
