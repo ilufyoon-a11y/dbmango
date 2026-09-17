@@ -42,23 +42,40 @@ def iniciar_servidor():
 # =========================================================
 
 def conectar_google_sheets():
-    # Obtiene las credenciales desde la variable de Render
+
+    print("🔄 Intentando conectar con Google Sheets...")
+
+    # Comprobar que exista la variable
+    if "GOOGLE_CREDS" not in os.environ:
+        raise Exception(
+            "No existe la variable GOOGLE_CREDS en Render."
+        )
+
+    # Obtener las credenciales desde Render
     credenciales = json.loads(
         os.environ["GOOGLE_CREDS"]
     )
 
-    # Crea la conexión con Google
+    print("✅ GOOGLE_CREDS encontrada.")
+
+    # Crear cliente de Google
     cliente = gspread.service_account_from_dict(
         credenciales
     )
 
-    # Abre el archivo de Google Sheets mediante su ID
+    print("✅ Autenticación con Google realizada.")
+
+    # Abrir el archivo mediante su ID
     archivo = cliente.open_by_key(
         "1FlYEJruBOy_l9Wqb09EFfapW3_DtrWABUUUrF68xJdU"
     )
 
-    # Selecciona la pestaña llamada Main
+    print("✅ Google Sheet encontrado.")
+
+    # Abrir la pestaña Main
     hoja = archivo.worksheet("Main")
+
+    print("✅ Pestaña 'Main' encontrada.")
 
     return hoja
 
@@ -76,7 +93,6 @@ CORREO, CONTRASENA, IP, PRIV, PLATAFORMA, ESTADO, BIN, TARJETA, VENCIMIENTO = ra
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    # Creamos un registro vacío
     context.user_data["registro"] = {}
 
     await update.message.reply_text(
@@ -211,19 +227,37 @@ async def recibir_tarjeta(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # FECHA DE VENCIMIENTO
 # =========================================================
 
-async def recibir_vencimiento(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def recibir_vencimiento(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
-    context.user_data["registro"]["FECHA DE VENCIMIENTO"] = update.message.text
+    context.user_data["registro"]["FECHA DE VENCIMIENTO"] = (
+        update.message.text
+    )
+
+    print("📥 Se recibieron los 9 campos.")
 
     try:
 
-        # Conectamos con Google Sheets
+        # ---------------------------------------------
+        # Conectar con Google Sheets
+        # ---------------------------------------------
+
         hoja = conectar_google_sheets()
 
-        # Recuperamos los datos registrados
+        # ---------------------------------------------
+        # Obtener registro
+        # ---------------------------------------------
+
         registro = context.user_data["registro"]
 
-        # Creamos la fila respetando el orden de las columnas
+        print("📝 Preparando fila para Google Sheets...")
+
+        # ---------------------------------------------
+        # Crear fila
+        # ---------------------------------------------
+
         fila = [
             registro["CORREO"],
             registro["CONTRASEÑA"],
@@ -236,27 +270,34 @@ async def recibir_vencimiento(update: Update, context: ContextTypes.DEFAULT_TYPE
             registro["FECHA DE VENCIMIENTO"]
         ]
 
-        # Agregamos la fila a Google Sheets
+        print("📊 Enviando fila a Google Sheets...")
+
+        # ---------------------------------------------
+        # Agregar fila
+        # ---------------------------------------------
+
         hoja.append_row(fila)
+
+        print("✅ FILA GUARDADA CORRECTAMENTE.")
 
         await update.message.reply_text(
             "✅ Registro completado.\n\n"
-            "📊 Los 9 campos fueron guardados correctamente "
-            "en Google Sheets."
+            "📊 Los 9 campos fueron guardados "
+            "correctamente en Google Sheets."
         )
-
-        print("✅ Registro guardado en Google Sheets.")
 
     except Exception as error:
 
-        print(
-            "❌ ERROR GOOGLE SHEETS:",
-            error
-        )
+        print("===================================")
+        print("❌ ERROR GOOGLE SHEETS")
+        print("TIPO:", type(error).__name__)
+        print("DETALLE:", repr(error))
+        print("===================================")
 
         await update.message.reply_text(
-            "⚠️ Los datos fueron recibidos, pero ocurrió "
-            "un error al guardarlos en Google Sheets."
+            "⚠️ Ocurrió un error al guardar "
+            "los datos en Google Sheets.\n\n"
+            f"Tipo de error: {type(error).__name__}"
         )
 
     return ConversationHandler.END
@@ -266,7 +307,10 @@ async def recibir_vencimiento(update: Update, context: ContextTypes.DEFAULT_TYPE
 # CANCELAR
 # =========================================================
 
-async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cancelar(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
 
     await update.message.reply_text(
         "❌ Registro cancelado."
@@ -281,27 +325,39 @@ async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
 
-    # Obtenemos el token de Telegram desde Render
+    # ---------------------------------------------
+    # Obtener token de Telegram
+    # ---------------------------------------------
+
     token = os.getenv("TELEGRAM_TOKEN")
 
     if not token:
 
         print(
-            "❌ ERROR: No se encontró TELEGRAM_TOKEN"
+            "❌ ERROR: No se encontró TELEGRAM_TOKEN."
         )
 
         return
 
-    # Iniciamos el servidor HTTP para Render
+    # ---------------------------------------------
+    # Iniciar servidor para Render
+    # ---------------------------------------------
+
     threading.Thread(
         target=iniciar_servidor,
         daemon=True
     ).start()
 
-    # Creamos la aplicación de Telegram
+    # ---------------------------------------------
+    # Crear aplicación de Telegram
+    # ---------------------------------------------
+
     app = Application.builder().token(token).build()
 
-    # Creamos la conversación
+    # ---------------------------------------------
+    # Crear conversación
+    # ---------------------------------------------
+
     conversacion = ConversationHandler(
 
         entry_points=[
@@ -385,12 +441,18 @@ def main():
         ]
     )
 
-    # Añadimos la conversación al bot
+    # ---------------------------------------------
+    # Añadir conversación
+    # ---------------------------------------------
+
     app.add_handler(conversacion)
 
     print("🤖 Bot iniciado...")
 
-    # Iniciamos Telegram
+    # ---------------------------------------------
+    # Iniciar bot
+    # ---------------------------------------------
+
     app.run_polling()
 
 
