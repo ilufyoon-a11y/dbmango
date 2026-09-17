@@ -1,6 +1,7 @@
 import os
 import json
 import threading
+import traceback
 
 import gspread
 from flask import Flask
@@ -9,29 +10,39 @@ from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
-    MessageHandler,
     ConversationHandler,
+    MessageHandler,
     ContextTypes,
-    filters
+    filters,
 )
 
 
 # =========================================================
-# SERVIDOR PARA RENDER
+# CONFIGURACIÓN
 # =========================================================
 
-web_app = Flask(__name__)
+TOKEN = os.environ["TELEGRAM_TOKEN"]
+
+SHEET_ID = "1FlYEJruBOy_l9Wqb09EFfapW3_DtrWABUUUrF68xJdU"
+WORKSHEET_NAME = "Main"
 
 
-@web_app.route("/")
-def home():
+# =========================================================
+# SERVIDOR FLASK PARA RENDER
+# =========================================================
+
+app = Flask(__name__)
+
+
+@app.route("/")
+def inicio():
     return "Bot funcionando correctamente."
 
 
 def iniciar_servidor():
     port = int(os.environ.get("PORT", 10000))
 
-    web_app.run(
+    app.run(
         host="0.0.0.0",
         port=port
     )
@@ -45,35 +56,31 @@ def conectar_google_sheets():
 
     print("🔄 Intentando conectar con Google Sheets...")
 
-    # Comprobar que exista la variable
-    if "GOOGLE_CREDS" not in os.environ:
-        raise Exception(
-            "No existe la variable GOOGLE_CREDS en Render."
-        )
-
     # Obtener las credenciales desde Render
-    credenciales = json.loads(
-        os.environ["GOOGLE_CREDS"]
-    )
+    credenciales_json = os.environ.get("GOOGLE_CREDS")
+
+    if not credenciales_json:
+        raise PermissionError(
+            "La variable GOOGLE_CREDS no existe en Render."
+        )
 
     print("✅ GOOGLE_CREDS encontrada.")
 
-    # Crear cliente de Google
-    cliente = gspread.service_account_from_dict(
-        credenciales
-    )
+    # Convertir el JSON
+    credenciales = json.loads(credenciales_json)
+
+    # Autenticación
+    cliente = gspread.service_account_from_dict(credenciales)
 
     print("✅ Autenticación con Google realizada.")
 
     # Abrir el archivo mediante su ID
-    archivo = cliente.open_by_key(
-        "1FlYEJruBOy_l9Wqb09EFfapW3_DtrWABUUUrF68xJdU"
-    )
+    archivo = cliente.open_by_key(SHEET_ID)
 
     print("✅ Google Sheet encontrado.")
 
     # Abrir la pestaña Main
-    hoja = archivo.worksheet("Main")
+    hoja = archivo.worksheet(WORKSHEET_NAME)
 
     print("✅ Pestaña 'Main' encontrada.")
 
@@ -81,14 +88,24 @@ def conectar_google_sheets():
 
 
 # =========================================================
-# ESTADOS DEL FORMULARIO
+# ESTADOS DE LA CONVERSACIÓN
 # =========================================================
 
-CORREO, CONTRASENA, IP, PRIV, PLATAFORMA, ESTADO, BIN, TARJETA, VENCIMIENTO = range(9)
+(
+    CORREO,
+    CONTRASENA,
+    IP,
+    PRIV,
+    PLATAFORMA,
+    ESTADO,
+    BIN,
+    TARJETA,
+    VENCIMIENTO
+) = range(9)
 
 
 # =========================================================
-# COMANDO /start
+# /START
 # =========================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,8 +113,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"] = {}
 
     await update.message.reply_text(
-        "🤖 ¡Hola! Vamos a registrar un nuevo dato.\n\n"
-        "📧 Ingresa el correo de prueba:"
+        "🤖 ¡Hola! Vamos a registrar los datos.\n\n"
+        "Escribe el CORREO de prueba:"
     )
 
     return CORREO
@@ -112,7 +129,7 @@ async def recibir_correo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"]["CORREO"] = update.message.text
 
     await update.message.reply_text(
-        "🔑 Ingresa la contraseña de prueba:"
+        "🔐 Escribe la CONTRASEÑA de prueba:"
     )
 
     return CONTRASENA
@@ -127,7 +144,7 @@ async def recibir_contrasena(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["registro"]["CONTRASEÑA"] = update.message.text
 
     await update.message.reply_text(
-        "🌐 Ingresa la IP de prueba:"
+        "🌐 Escribe la IP de prueba:"
     )
 
     return IP
@@ -142,7 +159,7 @@ async def recibir_ip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"]["IP"] = update.message.text
 
     await update.message.reply_text(
-        "🌎 Ingresa el país/PRIV:"
+        "🔑 Escribe el nivel PRIV de prueba:"
     )
 
     return PRIV
@@ -157,7 +174,7 @@ async def recibir_priv(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"]["PRIV"] = update.message.text
 
     await update.message.reply_text(
-        "📱 Ingresa la plataforma:"
+        "📱 Escribe la PLATAFORMA de prueba:"
     )
 
     return PLATAFORMA
@@ -172,7 +189,7 @@ async def recibir_plataforma(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["registro"]["PLATAFORMAS"] = update.message.text
 
     await update.message.reply_text(
-        "📌 Ingresa el estado:"
+        "📌 Escribe el ESTADO de prueba:"
     )
 
     return ESTADO
@@ -187,7 +204,7 @@ async def recibir_estado(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"]["ESTADO"] = update.message.text
 
     await update.message.reply_text(
-        "🔢 Ingresa el BIN ficticio:"
+        "🔢 Escribe el BIN de prueba:"
     )
 
     return BIN
@@ -202,7 +219,7 @@ async def recibir_bin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"]["BIN"] = update.message.text
 
     await update.message.reply_text(
-        "💳 Ingresa el número de tarjeta enmascarado:"
+        "💳 Escribe el número de TARJETA ficticio:"
     )
 
     return TARJETA
@@ -217,14 +234,14 @@ async def recibir_tarjeta(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["registro"]["TARJETA"] = update.message.text
 
     await update.message.reply_text(
-        "📅 Ingresa la fecha de vencimiento de prueba:"
+        "📅 Escribe la FECHA DE VENCIMIENTO ficticia:"
     )
 
     return VENCIMIENTO
 
 
 # =========================================================
-# FECHA DE VENCIMIENTO
+# VENCIMIENTO + GUARDAR EN GOOGLE SHEETS
 # =========================================================
 
 async def recibir_vencimiento(
@@ -236,28 +253,18 @@ async def recibir_vencimiento(
         update.message.text
     )
 
+    registro = context.user_data["registro"]
+
+    print("===================================")
     print("📥 Se recibieron los 9 campos.")
+    print("🔄 Intentando conectar con Google Sheets...")
 
     try:
 
-        # ---------------------------------------------
         # Conectar con Google Sheets
-        # ---------------------------------------------
-
         hoja = conectar_google_sheets()
 
-        # ---------------------------------------------
-        # Obtener registro
-        # ---------------------------------------------
-
-        registro = context.user_data["registro"]
-
-        print("📝 Preparando fila para Google Sheets...")
-
-        # ---------------------------------------------
-        # Crear fila
-        # ---------------------------------------------
-
+        # Orden exacto de las columnas de la hoja
         fila = [
             registro["CORREO"],
             registro["CONTRASEÑA"],
@@ -272,33 +279,38 @@ async def recibir_vencimiento(
 
         print("📊 Enviando fila a Google Sheets...")
 
-        # ---------------------------------------------
-        # Agregar fila
-        # ---------------------------------------------
-
+        # Guardar la fila
         hoja.append_row(fila)
 
         print("✅ FILA GUARDADA CORRECTAMENTE.")
+        print("===================================")
 
         await update.message.reply_text(
-            "✅ Registro completado.\n\n"
-            "📊 Los 9 campos fueron guardados "
-            "correctamente en Google Sheets."
+            "✅ ¡Registro guardado correctamente en Google Sheets!"
         )
 
-    except Exception as error:
+    except Exception as e:
 
         print("===================================")
         print("❌ ERROR GOOGLE SHEETS")
-        print("TIPO:", type(error).__name__)
-        print("DETALLE:", repr(error))
+        print("TIPO:", type(e).__name__)
+        print("DETALLE:", repr(e))
+        print("----- TRACEBACK COMPLETO -----")
+
+        # IMPORTANTE:
+        # Esto nos mostrará exactamente dónde ocurre el error
+        traceback.print_exc()
+
         print("===================================")
 
         await update.message.reply_text(
-            "⚠️ Ocurrió un error al guardar "
-            "los datos en Google Sheets.\n\n"
-            f"Tipo de error: {type(error).__name__}"
+            "⚠️ Ocurrió un error al guardar los datos "
+            "en Google Sheets.\n\n"
+            f"Tipo de error: {type(e).__name__}"
         )
+
+    # Limpiar los datos de la conversación
+    context.user_data.clear()
 
     return ConversationHandler.END
 
@@ -311,6 +323,8 @@ async def cancelar(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+
+    context.user_data.clear()
 
     await update.message.reply_text(
         "❌ Registro cancelado."
@@ -325,46 +339,22 @@ async def cancelar(
 
 def main():
 
-    # ---------------------------------------------
-    # Obtener token de Telegram
-    # ---------------------------------------------
-
-    token = os.getenv("TELEGRAM_TOKEN")
-
-    if not token:
-
-        print(
-            "❌ ERROR: No se encontró TELEGRAM_TOKEN."
-        )
-
-        return
-
-    # ---------------------------------------------
-    # Iniciar servidor para Render
-    # ---------------------------------------------
-
+    # Iniciar Flask en segundo plano
     threading.Thread(
         target=iniciar_servidor,
         daemon=True
     ).start()
 
-    # ---------------------------------------------
+    print("🤖 Bot iniciado...")
+
     # Crear aplicación de Telegram
-    # ---------------------------------------------
+    application = Application.builder().token(TOKEN).build()
 
-    app = Application.builder().token(token).build()
-
-    # ---------------------------------------------
-    # Crear conversación
-    # ---------------------------------------------
-
+    # Conversación
     conversacion = ConversationHandler(
 
         entry_points=[
-            CommandHandler(
-                "start",
-                start
-            )
+            CommandHandler("start", start)
         ],
 
         states={
@@ -430,30 +420,18 @@ def main():
                     filters.TEXT & ~filters.COMMAND,
                     recibir_vencimiento
                 )
-            ]
+            ],
         },
 
         fallbacks=[
-            CommandHandler(
-                "cancelar",
-                cancelar
-            )
+            CommandHandler("cancelar", cancelar)
         ]
     )
 
-    # ---------------------------------------------
-    # Añadir conversación
-    # ---------------------------------------------
+    application.add_handler(conversacion)
 
-    app.add_handler(conversacion)
-
-    print("🤖 Bot iniciado...")
-
-    # ---------------------------------------------
-    # Iniciar bot
-    # ---------------------------------------------
-
-    app.run_polling()
+    # Ejecutar bot
+    application.run_polling()
 
 
 # =========================================================
