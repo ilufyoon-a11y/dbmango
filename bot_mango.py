@@ -821,7 +821,7 @@ def main():
     # /rápido y /rapido
     application.add_handler(
         CommandHandler(
-            "rápido",
+            "fast",
             rapido
         )
     )
