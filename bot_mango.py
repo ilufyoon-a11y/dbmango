@@ -35,7 +35,12 @@ TOKEN = os.environ["TELEGRAM_TOKEN"]
 SHEET_ID = "1FlYEJruBOy_l9Wqb09EFfapW3_DtrWABUUUrF68xJdU"
 WORKSHEET_NAME = "Main"
 
+# La tabla comienza en la fila 41
 FILA_INICIAL = 41
+
+# La tabla comienza en la columna K
+COLUMNA_INICIAL = "K"
+COLUMNA_FINAL = "S"
 
 
 # ============================================================
@@ -47,11 +52,14 @@ app_flask = Flask(__name__)
 
 @app_flask.route("/")
 def inicio():
-    return "🤖 Bot Mango está funcionando."
+    return "🥭 Bot Mango está funcionando."
 
 
 def iniciar_servidor():
-    puerto = int(os.environ.get("PORT", 10000))
+
+    puerto = int(
+        os.environ.get("PORT", 10000)
+    )
 
     app_flask.run(
         host="0.0.0.0",
@@ -76,34 +84,57 @@ def conectar_google_sheets():
 
     print("✅ GOOGLE_CREDS encontrada.")
 
-    credenciales = json.loads(credenciales_json)
+    credenciales = json.loads(
+        credenciales_json
+    )
 
     print(
         "📧 Cuenta de servicio:",
         credenciales.get("client_email")
     )
 
-    print("🆔 ID de la hoja:", SHEET_ID)
+    print(
+        "🆔 ID de la hoja:",
+        SHEET_ID
+    )
 
     cliente = gspread.service_account_from_dict(
         credenciales
     )
 
-    print("✅ Autenticación con Google realizada.")
+    print(
+        "✅ Autenticación con Google realizada."
+    )
 
     try:
 
-        print("🔎 Intentando abrir Google Sheet...")
+        print(
+            "🔎 Intentando abrir Google Sheet..."
+        )
 
-        archivo = cliente.open_by_key(SHEET_ID)
+        archivo = cliente.open_by_key(
+            SHEET_ID
+        )
 
-        print("✅ Google Sheet encontrado.")
+        print(
+            "✅ Google Sheet encontrado."
+        )
 
     except Exception as error:
 
-        print("❌ ERROR AL ABRIR GOOGLE SHEET")
-        print("TIPO:", type(error).__name__)
-        print("DETALLE:", repr(error))
+        print(
+            "❌ ERROR AL ABRIR GOOGLE SHEET"
+        )
+
+        print(
+            "TIPO:",
+            type(error).__name__
+        )
+
+        print(
+            "DETALLE:",
+            repr(error)
+        )
 
         traceback.print_exc()
 
@@ -116,7 +147,9 @@ def conectar_google_sheets():
             WORKSHEET_NAME
         )
 
-        hoja = archivo.worksheet(WORKSHEET_NAME)
+        hoja = archivo.worksheet(
+            WORKSHEET_NAME
+        )
 
         print(
             "✅ Pestaña encontrada:",
@@ -125,9 +158,19 @@ def conectar_google_sheets():
 
     except Exception as error:
 
-        print("❌ ERROR AL ABRIR LA PESTAÑA")
-        print("TIPO:", type(error).__name__)
-        print("DETALLE:", repr(error))
+        print(
+            "❌ ERROR AL ABRIR LA PESTAÑA"
+        )
+
+        print(
+            "TIPO:",
+            type(error).__name__
+        )
+
+        print(
+            "DETALLE:",
+            repr(error)
+        )
 
         traceback.print_exc()
 
@@ -137,30 +180,60 @@ def conectar_google_sheets():
 
 
 # ============================================================
-# SIGUIENTE FILA
+# BUSCAR PRIMERA FILA DISPONIBLE
 # ============================================================
 
 def obtener_siguiente_fila(hoja):
 
-    valores = hoja.get_all_values()
+    print(
+        "🔎 Buscando fila disponible desde:",
+        FILA_INICIAL
+    )
 
-    if len(valores) < FILA_INICIAL - 1:
-        return FILA_INICIAL
+    # Solo revisamos la columna K,
+    # porque K es donde comienza CORREO.
 
-    ultima_fila = FILA_INICIAL - 1
+    ultima_fila = hoja.row_count
 
-    for numero_fila, fila in enumerate(
-        valores[FILA_INICIAL - 1:],
+    valores = hoja.get(
+        f"{COLUMNA_INICIAL}"
+        f"{FILA_INICIAL}:"
+        f"{COLUMNA_INICIAL}"
+        f"{ultima_fila}"
+    )
+
+    for indice, fila in enumerate(
+        valores,
         start=FILA_INICIAL
     ):
 
-        if any(celda.strip() for celda in fila):
-            ultima_fila = numero_fila
+        if not fila:
+            print(
+                "📍 Primera fila disponible:",
+                indice
+            )
 
-    return max(
-        FILA_INICIAL,
-        ultima_fila + 1
+            return indice
+
+        contenido = fila[0].strip()
+
+        if not contenido:
+
+            print(
+                "📍 Primera fila disponible:",
+                indice
+            )
+
+            return indice
+
+    siguiente = ultima_fila + 1
+
+    print(
+        "📍 Agregando nueva fila:",
+        siguiente
     )
+
+    return siguiente
 
 
 # ============================================================
@@ -248,7 +321,7 @@ async def registrar(
 
     await update.message.reply_text(
         "📝 Vamos a registrar un nuevo dato.\n\n"
-        "Primero escribe el correo."
+        "Primero escribe el correo de prueba."
     )
 
     return CORREO
@@ -264,8 +337,7 @@ async def recibir_correo(
     )
 
     await update.message.reply_text(
-        "🗝️ Ahora escribe la contraseña "
-        "(usa un dato ficticio para la práctica)."
+        "🗝️ Escribe la contraseña de prueba."
     )
 
     return CONTRASENA
@@ -281,7 +353,7 @@ async def recibir_contrasena(
     )
 
     await update.message.reply_text(
-        "📍 Ahora escribe la IP."
+        "📍 Escribe una IP de prueba."
     )
 
     return IP
@@ -297,7 +369,7 @@ async def recibir_ip(
     )
 
     await update.message.reply_text(
-        "⛺ Ahora escribe PRIV."
+        "⛺ Escribe PRIV."
     )
 
     return PRIV
@@ -313,7 +385,7 @@ async def recibir_priv(
     )
 
     await update.message.reply_text(
-        "🎟️ Ahora escribe la plataforma."
+        "🎟️ Escribe la plataforma."
     )
 
     return PLATAFORMA
@@ -329,7 +401,7 @@ async def recibir_plataforma(
     )
 
     await update.message.reply_text(
-        "🍂 Ahora escribe el estado."
+        "🍂 Escribe el estado."
     )
 
     return ESTADO
@@ -345,8 +417,7 @@ async def recibir_estado(
     )
 
     await update.message.reply_text(
-        "🏷️ Ahora escribe el BIN "
-        "(usa un dato ficticio)."
+        "🏷️ Escribe un BIN de prueba."
     )
 
     return BIN
@@ -362,8 +433,8 @@ async def recibir_bin(
     )
 
     await update.message.reply_text(
-        "💳 Ahora escribe la tarjeta "
-        "(usa un dato enmascarado o ficticio)."
+        "💳 Escribe una tarjeta enmascarada "
+        "o de prueba."
     )
 
     return TARJETA
@@ -379,12 +450,16 @@ async def recibir_tarjeta(
     )
 
     await update.message.reply_text(
-        "🕰️ Finalmente escribe la fecha de vencimiento.\n\n"
+        "🕰️ Escribe la fecha de vencimiento.\n\n"
         "Formato: DD/MM/YYYY"
     )
 
     return VENCIMIENTO
 
+
+# ============================================================
+# GUARDAR REGISTRO NORMAL
+# ============================================================
 
 async def recibir_vencimiento(
     update: Update,
@@ -411,15 +486,21 @@ async def recibir_vencimiento(
 
     try:
 
-        print("📊 Enviando fila a Google Sheets...")
+        print(
+            "📊 Enviando registro a Google Sheets..."
+        )
 
         hoja = conectar_google_sheets()
 
-        fila_actual = obtener_siguiente_fila(hoja)
+        fila_actual = obtener_siguiente_fila(
+            hoja
+        )
 
-        hoja.insert_row(
-            fila,
-            fila_actual
+        # IMPORTANTE:
+        # Se escribe directamente de K a S.
+        hoja.update(
+            f"K{fila_actual}:S{fila_actual}",
+            [fila]
         )
 
         print(
@@ -429,14 +510,25 @@ async def recibir_vencimiento(
 
         await update.message.reply_text(
             "✅ Registro guardado correctamente.\n\n"
-            f"📍 Fila: {fila_actual}"
+            f"📍 Fila: {fila_actual}\n"
+            "📊 Columnas: K → S"
         )
 
     except Exception as error:
 
-        print("❌ ERROR GOOGLE SHEETS")
-        print("TIPO:", type(error).__name__)
-        print("DETALLE:", repr(error))
+        print(
+            "❌ ERROR GOOGLE SHEETS"
+        )
+
+        print(
+            "TIPO:",
+            type(error).__name__
+        )
+
+        print(
+            "DETALLE:",
+            repr(error)
+        )
 
         traceback.print_exc()
 
@@ -487,16 +579,17 @@ async def rapido(
     ])
 
     await update.message.reply_text(
-        "✨ Aquí tienes la plantilla rápida:\n\n"
-        "Pulsa el botón para que te la envíe "
-        "lista para copiar.\n\n"
-        "💡 Usa datos ficticios o enmascarados.",
+        "✨ Aquí tienes la plantilla rápida.\n\n"
+        "Pulsa el botón para recibirla lista "
+        "para copiar.\n\n"
+        "💡 Usa únicamente datos ficticios "
+        "o enmascarados.",
         reply_markup=teclado
     )
 
 
 # ============================================================
-# BOTÓN "COPIAR PLANTILLA"
+# BOTÓN COPIAR PLANTILLA
 # ============================================================
 
 async def copiar_plantilla(
@@ -506,7 +599,9 @@ async def copiar_plantilla(
 
     query = update.callback_query
 
-    await query.answer()
+    await query.answer(
+        "📋 Plantilla lista para copiar"
+    )
 
     plantilla = obtener_plantilla()
 
@@ -527,14 +622,23 @@ async def recibir_plantilla_rapida(
     texto = update.message.text
 
     campos = {
+
         "coɾɾeo": "correo",
+
         "pɑsswoɾd": "contrasena",
+
         "I.P": "ip",
+
         "pɾiv": "priv",
+
         "plɑtɑfoɾmɑ": "plataforma",
+
         "estɑdo": "estado",
+
         "bin": "bin",
+
         "tɑɾjetɑ": "tarjeta",
+
         "vencimiento": "vencimiento"
     }
 
@@ -551,17 +655,22 @@ async def recibir_plantilla_rapida(
         )
 
         etiqueta = etiqueta.strip()
+
         valor = valor.strip()
 
         for nombre_formato, nombre_campo in campos.items():
 
-            if nombre_formato.lower() in etiqueta.lower():
+            if (
+                nombre_formato.lower()
+                in etiqueta.lower()
+            ):
 
                 registro[nombre_campo] = valor
 
                 break
 
     campos_requeridos = [
+
         "correo",
         "contrasena",
         "ip",
@@ -574,10 +683,15 @@ async def recibir_plantilla_rapida(
     ]
 
     faltantes = [
+
         campo
+
         for campo in campos_requeridos
-        if campo not in registro
-        or not registro[campo]
+
+        if (
+            campo not in registro
+            or not registro[campo]
+        )
     ]
 
     if faltantes:
@@ -593,50 +707,76 @@ async def recibir_plantilla_rapida(
         return
 
     fila = [
+
         registro["correo"],
+
         registro["contrasena"],
+
         registro["ip"],
+
         registro["priv"],
+
         registro["plataforma"],
+
         registro["estado"],
+
         registro["bin"],
+
         registro["tarjeta"],
+
         registro["vencimiento"]
     ]
 
     try:
 
-        print("📊 Guardando plantilla rápida...")
+        print(
+            "📊 Guardando plantilla rápida..."
+        )
 
         hoja = conectar_google_sheets()
 
-        fila_actual = obtener_siguiente_fila(hoja)
+        fila_actual = obtener_siguiente_fila(
+            hoja
+        )
 
-        hoja.insert_row(
-            fila,
-            fila_actual
+        # K → S
+        hoja.update(
+            f"K{fila_actual}:S{fila_actual}",
+            [fila]
         )
 
         print(
-            "✅ PLANTILLA GUARDADA:",
+            "✅ PLANTILLA GUARDADA EN FILA:",
             fila_actual
         )
 
         await update.message.reply_text(
             "✨ ¡Registro rápido guardado!\n\n"
-            f"📍 Fila: {fila_actual}"
+            f"📍 Fila: {fila_actual}\n"
+            "📊 Columnas: K → S"
         )
 
     except Exception as error:
 
-        print("❌ ERROR AL GUARDAR PLANTILLA")
-        print("TIPO:", type(error).__name__)
-        print("DETALLE:", repr(error))
+        print(
+            "❌ ERROR AL GUARDAR PLANTILLA"
+        )
+
+        print(
+            "TIPO:",
+            type(error).__name__
+        )
+
+        print(
+            "DETALLE:",
+            repr(error)
+        )
 
         traceback.print_exc()
 
         await update.message.reply_text(
-            "❌ Ocurrió un error al guardar el registro."
+            "❌ Ocurrió un error al guardar "
+            "el registro."
         )
 
 
@@ -681,26 +821,32 @@ def revisar_vencimientos():
                 start=FILA_INICIAL
             ):
 
-                if len(fila) < 9:
+                # Necesitamos llegar hasta
+                # la columna S.
+                if len(fila) < 19:
                     continue
 
-                fecha_texto = fila[8].strip()
+                # La columna S es el índice 18.
+                fecha_texto = fila[18].strip()
 
                 if not fecha_texto:
                     continue
 
                 try:
 
-                    fecha_vencimiento = datetime.strptime(
-                        fecha_texto,
-                        "%d/%m/%Y"
-                    ).date()
+                    fecha_vencimiento = (
+                        datetime.strptime(
+                            fecha_texto,
+                            "%d/%m/%Y"
+                        ).date()
+                    )
 
                 except ValueError:
 
                     print(
-                        f"⚠️ Fecha inválida en fila "
-                        f"{numero_fila}: {fecha_texto}"
+                        f"⚠️ Fecha inválida "
+                        f"en fila {numero_fila}: "
+                        f"{fecha_texto}"
                     )
 
                     continue
@@ -709,6 +855,7 @@ def revisar_vencimientos():
                     fecha_vencimiento - hoy
                 ).days
 
+                # SOLO un día antes.
                 if diferencia == 1:
 
                     for chat_id in usuarios_activos:
@@ -718,7 +865,10 @@ def revisar_vencimientos():
                             numero_fila
                         )
 
-                        if clave not in recordatorios_enviados:
+                        if (
+                            clave
+                            not in recordatorios_enviados
+                        ):
 
                             asyncio.run(
                                 enviar_recordatorio(
@@ -740,6 +890,7 @@ def revisar_vencimientos():
 
             traceback.print_exc()
 
+        # Revisar cada hora.
         threading.Event().wait(3600)
 
 
@@ -747,11 +898,13 @@ def revisar_vencimientos():
 # APLICACIÓN TELEGRAM
 # ============================================================
 
-application = Application.builder().token(TOKEN).build()
+application = Application.builder().token(
+    TOKEN
+).build()
 
 
 # ============================================================
-# CONVERSACIÓN
+# CONVERSACIÓN /REGISTRAR
 # ============================================================
 
 conversacion_registro = ConversationHandler(
@@ -774,6 +927,7 @@ conversacion_registro = ConversationHandler(
     states={
 
         CORREO: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_correo
@@ -781,6 +935,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         CONTRASENA: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_contrasena
@@ -788,6 +943,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         IP: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_ip
@@ -795,6 +951,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         PRIV: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_priv
@@ -802,6 +959,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         PLATAFORMA: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_plataforma
@@ -809,6 +967,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         ESTADO: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_estado
@@ -816,6 +975,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         BIN: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_bin
@@ -823,6 +983,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         TARJETA: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_tarjeta
@@ -830,6 +991,7 @@ conversacion_registro = ConversationHandler(
         ],
 
         VENCIMIENTO: [
+
             MessageHandler(
                 filters.TEXT & ~filters.COMMAND,
                 recibir_vencimiento
@@ -858,6 +1020,7 @@ conversacion_registro = ConversationHandler(
 # HANDLERS
 # ============================================================
 
+# /start
 application.add_handler(
     CommandHandler(
         "start",
@@ -875,11 +1038,13 @@ application.add_handler(
 )
 
 
+# /registrar
 application.add_handler(
     conversacion_registro
 )
 
 
+# /rapido
 application.add_handler(
     CommandHandler(
         "rapido",
@@ -897,6 +1062,7 @@ application.add_handler(
 )
 
 
+# Botón de copiar
 application.add_handler(
     CallbackQueryHandler(
         copiar_plantilla,
@@ -905,6 +1071,7 @@ application.add_handler(
 )
 
 
+# /cancelar
 application.add_handler(
     CommandHandler(
         "cancelar",
@@ -922,6 +1089,7 @@ application.add_handler(
 )
 
 
+# Plantilla rápida
 application.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
@@ -936,9 +1104,21 @@ application.add_handler(
 
 if __name__ == "__main__":
 
-    print("===================================")
-    print("🥭 BOT MANGO INICIANDO...")
-    print("===================================")
+    print(
+        "==================================="
+    )
+
+    print(
+        "🥭 BOT MANGO INICIANDO..."
+    )
+
+    print(
+        "==================================="
+    )
+
+    # --------------------------------------------------------
+    # Flask para Render
+    # --------------------------------------------------------
 
     hilo_flask = threading.Thread(
         target=iniciar_servidor,
@@ -947,7 +1127,13 @@ if __name__ == "__main__":
 
     hilo_flask.start()
 
-    print("🌐 Servidor Flask iniciado.")
+    print(
+        "🌐 Servidor Flask iniciado."
+    )
+
+    # --------------------------------------------------------
+    # Recordatorios
+    # --------------------------------------------------------
 
     hilo_recordatorios = threading.Thread(
         target=revisar_vencimientos,
@@ -956,8 +1142,16 @@ if __name__ == "__main__":
 
     hilo_recordatorios.start()
 
-    print("⏰ Sistema de recordatorios iniciado.")
+    print(
+        "⏰ Sistema de recordatorios iniciado."
+    )
 
-    print("🤖 Bot iniciado correctamente.")
+    print(
+        "🤖 Bot iniciado correctamente."
+    )
+
+    # --------------------------------------------------------
+    # Telegram
+    # --------------------------------------------------------
 
     application.run_polling()
